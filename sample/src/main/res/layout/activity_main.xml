@@ -1,42 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/layout_wrapper"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    tools:context="com.daasuu.exoplayerfilter.MainActivity">
+    android:layout_height="match_parent">
 
-    <com.daasuu.exoplayerfilter.MovieWrapperView
-        android:id="@+id/layout_movie_wrapper"
+    <LinearLayout
+        android:id="@+id/layout_wrapper"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        tools:context="com.daasuu.exoplayerfilter.MainActivity">
 
-    <ListView
-        android:id="@+id/list"
+        <com.daasuu.exoplayerfilter.MovieWrapperView
+            android:id="@+id/layout_movie_wrapper"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <ListView
+            android:id="@+id/list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <SeekBar
+            android:id="@+id/seekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp" />
+
+        <Button
+            android:id="@+id/btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:text="@string/pause" />
+
+        <Button
+            android:id="@+id/btn_file"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="文件" />
+
+    </LinearLayout>
+
+    <SurfaceView
+        android:id="@+id/surfaceview"
+        android:visibility="gone"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <SeekBar
-        android:id="@+id/seekBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp" />
-
-    <Button
-        android:id="@+id/btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="@string/pause" />
-
-    <Button
-        android:id="@+id/btn_file"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="文件" />
-
-</LinearLayout>
+        android:layout_height="match_parent" />
+</FrameLayout>

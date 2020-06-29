@@ -1,9 +1,13 @@
 package com.daasuu.exoplayerfilter;
 
 import android.content.Intent;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -27,7 +31,6 @@ import com.google.android.exoplayer2.LoadControl;
 import com.google.android.exoplayer2.Renderer;
 import com.google.android.exoplayer2.SeekParameters;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.MergingMediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
@@ -35,15 +38,12 @@ import com.google.android.exoplayer2.source.SingleSampleMediaSource;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DataSpec;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.upstream.cache.CacheUtil;
 import com.google.android.exoplayer2.util.Util;
 
 import java.util.List;
 
 import static com.google.android.exoplayer2.C.SELECTION_FLAG_FORCED;
-import static com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MUXED_BUFFER_SIZE;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -150,6 +150,24 @@ public class MainActivity extends AppCompatActivity {
                 ePlayerView.setGlFilter(FilterType.createGlFilter(filterTypes.get(position), getApplicationContext()));
             }
         });
+        SurfaceView surfaceView = findViewById(R.id.surfaceview);
+        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                final Surface surface = holder.getSurface();
+                ImageRenderer.drawBitmapTOSurface(surface, ((BitmapDrawable) getResources().getDrawable(R.drawable.aaa)).getBitmap());
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+
+            }
+        });
     }
 
     private static int getDefaultBufferSize(int trackType) {
@@ -203,17 +221,15 @@ public class MainActivity extends AppCompatActivity {
         player = ExoPlayerFactory.newSimpleInstance(this, new CustomRenderersFactory(this), new DefaultTrackSelector(), loadControl);
         player.setSeekParameters(new SeekParameters(0, 1000 * 1000));
         // Prepare the player with the source.
-        player.prepare(videoSource);
-        player.setPlayWhenReady(true);
+//        player.prepare(videoSource);
+//        player.setPlayWhenReady(true);
 
     }
 
     private void selectFile() {
         //调用系统文件管理器打开指定路径目录
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        //intent.setDataAndType(Uri.fromFile(dir.getParentFile()), "file/*.txt");
-        //intent.setType("file/*.txt"); //华为手机mate7不支持
-        intent.setType("video/mp4");
+        intent.setType("image/*");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         startActivityForResult(intent, 1111);
     }
