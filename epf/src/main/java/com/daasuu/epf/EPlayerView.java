@@ -3,11 +3,13 @@ package com.daasuu.epf;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
+import android.util.Log;
 
 import com.daasuu.epf.chooser.EConfigChooser;
 import com.daasuu.epf.contextfactory.EContextFactory;
 import com.daasuu.epf.filter.GlFilter;
 import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.analytics.AnalyticsListener;
 import com.google.android.exoplayer2.video.VideoListener;
 
 /**
@@ -35,7 +37,6 @@ public class EPlayerView extends GLSurfaceView implements VideoListener {
 
         renderer = new EPlayerRenderer(this);
         setRenderer(renderer);
-
     }
 
     public EPlayerView setSimpleExoPlayer(SimpleExoPlayer player) {
@@ -44,6 +45,12 @@ public class EPlayerView extends GLSurfaceView implements VideoListener {
             this.player = null;
         }
         this.player = player;
+        player.addAnalyticsListener(new AnalyticsListener() {
+            @Override
+            public void onSeekStarted(EventTime eventTime) {
+                Log.d(TAG, "onSeekStarted: " + eventTime.eventPlaybackPositionMs);
+            }
+        });
         this.player.addVideoListener(this);
         this.renderer.setSimpleExoPlayer(player);
         return this;

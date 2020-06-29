@@ -1,7 +1,9 @@
 package com.daasuu.exoplayerfilter;
 
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -10,21 +12,42 @@ import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.daasuu.epf.EPlayerView;
+import com.daasuu.epf.player.CustomRenderersFactory;
+import com.daasuu.epf.player.ImageMediaSource;
+import com.daasuu.epf.player.ImageRenderer;
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.Format;
+import com.google.android.exoplayer2.LoadControl;
+import com.google.android.exoplayer2.Renderer;
+import com.google.android.exoplayer2.SeekParameters;
 import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.MergingMediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
+import com.google.android.exoplayer2.source.SingleSampleMediaSource;
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DataSpec;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.upstream.cache.CacheUtil;
 import com.google.android.exoplayer2.util.Util;
 
 import java.util.List;
 
+import static com.google.android.exoplayer2.C.SELECTION_FLAG_FORCED;
+import static com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MUXED_BUFFER_SIZE;
+
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "MainActivity";
 
     private EPlayerView ePlayerView;
     private SimpleExoPlayer player;
@@ -39,19 +62,31 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         setUpViews();
 
+        setUpSimpleExoPlayer();
+        setUoGlPlayerView();
+        setUpTimer();
+
+        findViewById(R.id.btn_file).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                selectFile();
+            }
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        setUpSimpleExoPlayer();
-        setUoGlPlayerView();
-        setUpTimer();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
         releasePlayer();
         if (playerTimer != null) {
             playerTimer.stop();
@@ -91,6 +126,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 player.seekTo(progress * 1000);
+                Log.d(TAG, "onProgressChanged: ");
             }
 
             @Override
@@ -116,25 +152,99 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private static int getDefaultBufferSize(int trackType) {
+        switch (trackType) {
+            case C.TRACK_TYPE_DEFAULT:
+                return DefaultLoadControl.DEFAULT_MUXED_BUFFER_SIZE;
+            case C.TRACK_TYPE_AUDIO:
+                return DefaultLoadControl.DEFAULT_AUDIO_BUFFER_SIZE;
+            case C.TRACK_TYPE_VIDEO:
+            case ImageRenderer.TRACK_TYPE_CUSTOM_IMAGE:
+                return DefaultLoadControl.DEFAULT_VIDEO_BUFFER_SIZE;
+            case C.TRACK_TYPE_TEXT:
+                return DefaultLoadControl.DEFAULT_TEXT_BUFFER_SIZE;
+            case C.TRACK_TYPE_METADATA:
+                return DefaultLoadControl.DEFAULT_METADATA_BUFFER_SIZE;
+            case C.TRACK_TYPE_CAMERA_MOTION:
+                return DefaultLoadControl.DEFAULT_CAMERA_MOTION_BUFFER_SIZE;
+            case C.TRACK_TYPE_NONE:
+                return 0;
+            default:
+                throw new IllegalArgumentException();
+        }
+    }
+
 
     private void setUpSimpleExoPlayer() {
-
-
         // Produces DataSource instances through which media data is loaded.
         DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "yourApplicationName"));
-
+//        Constant.STREAM_URL_MP4_VOD_SHORT
         // This is the MediaSource representing the media to be played.
         MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(Uri.parse("http://10.255.207.16/mv.mp4"));
+        MediaSource videoSource2 = new ProgressiveMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(Uri.parse(Constant.STREAM_URL_MP4_VOD_SHORT));
-
+        videoSource = new MergingMediaSource(videoSource2, videoSource);
         // SimpleExoPlayer
-        player = ExoPlayerFactory.newSimpleInstance(this);
+//        player = ExoPlayerFactory.newSimpleInstance(this);
+
+        LoadControl loadControl = new DefaultLoadControl() {
+            @Override
+            protected int calculateTargetBufferSize(Renderer[] renderers, TrackSelectionArray trackSelectionArray) {
+                int targetBufferSize = 0;
+                for (int i = 0; i < renderers.length; i++) {
+                    if (trackSelectionArray.get(i) != null) {
+                        targetBufferSize += getDefaultBufferSize(renderers[i].getTrackType());
+                    }
+                }
+                return targetBufferSize;
+            }
+        };
+        player = ExoPlayerFactory.newSimpleInstance(this, new CustomRenderersFactory(this), new DefaultTrackSelector(), loadControl);
+        player.setSeekParameters(new SeekParameters(0, 1000 * 1000));
         // Prepare the player with the source.
         player.prepare(videoSource);
         player.setPlayWhenReady(true);
 
     }
 
+    private void selectFile() {
+        //调用系统文件管理器打开指定路径目录
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        //intent.setDataAndType(Uri.fromFile(dir.getParentFile()), "file/*.txt");
+        //intent.setType("file/*.txt"); //华为手机mate7不支持
+        intent.setType("video/mp4");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, 1111);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1111) {
+            Log.d(TAG, "onActivityResult: ");
+            Uri fileUri = data == null ? null : data.getData();
+            if (fileUri != null) {
+                // Produces DataSource instances through which media data is loaded.
+                DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "yourApplicationName"));
+                // This is the MediaSource representing the media to be played.
+//                MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
+//                        .createMediaSource(fileUri);
+                Format format = Format.createImageSampleFormat(
+                        null,
+                        "image/jpeg",
+                        null,
+                        Format.NO_VALUE,
+                        SELECTION_FLAG_FORCED,
+                        null,
+                        null, null);
+//                MediaSource videoSource = new SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(fileUri, format, 10_000);
+                MediaSource videoSource = new ImageMediaSource(dataSourceFactory, fileUri, 10_000);
+                player.prepare(videoSource);
+                player.setPlayWhenReady(true);
+            }
+        }
+    }
 
     private void setUoGlPlayerView() {
         ePlayerView = new EPlayerView(this);

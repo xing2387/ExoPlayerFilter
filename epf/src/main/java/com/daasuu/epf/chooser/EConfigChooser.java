@@ -120,7 +120,7 @@ public class EConfigChooser implements GLSurfaceView.EGLConfigChooser {
                 final int g = findConfigAttrib(egl, display, config, EGL_GREEN_SIZE, 0);
                 final int b = findConfigAttrib(egl, display, config, EGL_BLUE_SIZE, 0);
                 final int a = findConfigAttrib(egl, display, config, EGL_ALPHA_SIZE, 0);
-                if ((r == redSize) && (g == greenSize) && (b == blueSize) && (a == alphaSize)) {
+                if ((r == redSize) && (g == greenSize) && (b == blueSize) && (a >= alphaSize)) {
                     return config;
                 }
             }

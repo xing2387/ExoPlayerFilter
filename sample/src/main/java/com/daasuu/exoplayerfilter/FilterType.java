@@ -36,6 +36,7 @@ import com.daasuu.epf.filter.GlSepiaFilter;
 import com.daasuu.epf.filter.GlSharpenFilter;
 import com.daasuu.epf.filter.GlSolarizeFilter;
 import com.daasuu.epf.filter.GlSphereRefractionFilter;
+import com.daasuu.epf.filter.GlSuansuanFilter;
 import com.daasuu.epf.filter.GlSwirlFilter;
 import com.daasuu.epf.filter.GlToneCurveFilter;
 import com.daasuu.epf.filter.GlToneFilter;
@@ -166,7 +167,7 @@ public enum FilterType {
             case DEFAULT:
                 return new GlFilter();
             case BILATERAL_BLUR:
-                return new GlBilateralFilter();
+                return new GlSuansuanFilter();
             case BOX_BLUR:
                 return new GlBoxBlurFilter();
             case BRIGHTNESS:

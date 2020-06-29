@@ -3,6 +3,7 @@ package com.daasuu.epf;
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
+import android.renderscript.Matrix4f;
 import android.util.Log;
 import android.view.Surface;
 
@@ -81,12 +82,13 @@ class EPlayerRenderer extends EFrameBufferObjectRenderer implements SurfaceTextu
 
         final int[] args = new int[1];
 
+        //生成纹理
         GLES20.glGenTextures(args.length, args, 0);
         texName = args[0];
 
 
         previewTexture = new ESurfaceTexture(texName);
-        previewTexture.setOnFrameAvailableListener(this);
+        previewTexture.setOnFrameAvailableListener(this);   //onFrameAvailable(SurfaceTexture surfaceTexture)
 
 
         GLES20.glBindTexture(previewTexture.getTextureTarget(), texName);
@@ -162,7 +164,12 @@ class EPlayerRenderer extends EFrameBufferObjectRenderer implements SurfaceTextu
 
         Matrix.multiplyMM(MVPMatrix, 0, VMatrix, 0, MMatrix, 0);
         Matrix.multiplyMM(MVPMatrix, 0, ProjMatrix, 0, MVPMatrix, 0);
-
+        Matrix4f matrix4f = new Matrix4f();
+        StringBuilder sb = new StringBuilder();
+        for (float f : matrix4f.getArray()) {
+            sb.append(f + " ");
+        }
+//        Log.d(TAG, "onDrawFrame: " + sb.toString());
         previewFilter.draw(texName, MVPMatrix, STMatrix, aspectRatio);
 
         if (glFilter != null) {
@@ -175,6 +182,7 @@ class EPlayerRenderer extends EFrameBufferObjectRenderer implements SurfaceTextu
     @Override
     public synchronized void onFrameAvailable(final SurfaceTexture previewTexture) {
         updateSurface = true;
+        //触发GLSurfaceView的onDrawFrame
         glPreview.requestRender();
     }
 
