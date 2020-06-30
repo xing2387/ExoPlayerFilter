@@ -150,24 +150,24 @@ public class MainActivity extends AppCompatActivity {
                 ePlayerView.setGlFilter(FilterType.createGlFilter(filterTypes.get(position), getApplicationContext()));
             }
         });
-        SurfaceView surfaceView = findViewById(R.id.surfaceview);
-        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder holder) {
-                final Surface surface = holder.getSurface();
-                ImageRenderer.drawBitmapTOSurface(surface, ((BitmapDrawable) getResources().getDrawable(R.drawable.aaa)).getBitmap());
-            }
-
-            @Override
-            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder holder) {
-
-            }
-        });
+//        SurfaceView surfaceView = findViewById(R.id.surfaceview);
+//        surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
+//            @Override
+//            public void surfaceCreated(SurfaceHolder holder) {
+//                final Surface surface = holder.getSurface();
+//                ImageRenderer.drawBitmapTOSurface(surface, ((BitmapDrawable) getResources().getDrawable(R.drawable.aaa)).getBitmap());
+//            }
+//
+//            @Override
+//            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+//
+//            }
+//
+//            @Override
+//            public void surfaceDestroyed(SurfaceHolder holder) {
+//
+//            }
+//        });
     }
 
     private static int getDefaultBufferSize(int trackType) {
@@ -219,10 +219,12 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         player = ExoPlayerFactory.newSimpleInstance(this, new CustomRenderersFactory(this), new DefaultTrackSelector(), loadControl);
+//        SurfaceView surfaceView = findViewById(R.id.surfaceview);
+//        player.setVideoSurfaceView(surfaceView);
         player.setSeekParameters(new SeekParameters(0, 1000 * 1000));
         // Prepare the player with the source.
-//        player.prepare(videoSource);
-//        player.setPlayWhenReady(true);
+        player.prepare(videoSource);
+        player.setPlayWhenReady(true);
 
     }
 

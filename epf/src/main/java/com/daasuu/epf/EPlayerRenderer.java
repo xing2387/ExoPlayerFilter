@@ -89,10 +89,10 @@ class EPlayerRenderer extends EFrameBufferObjectRenderer implements SurfaceTextu
 
         previewTexture = new ESurfaceTexture(texName);
         previewTexture.setOnFrameAvailableListener(this);   //onFrameAvailable(SurfaceTexture surfaceTexture)
-
+        previewTexture.getSurfaceTexture().setDefaultBufferSize(glPreview.getWidth(), glPreview.getHeight());
 
         GLES20.glBindTexture(previewTexture.getTextureTarget(), texName);
-        // GL_TEXTURE_EXTERNAL_OES
+        // previewTexture.getTextureTarget() == GL_TEXTURE_EXTERNAL_OES
         EglUtil.setupSampler(previewTexture.getTextureTarget(), GL_LINEAR, GL_NEAREST);
         GLES20.glBindTexture(GL_TEXTURE_2D, 0);
 

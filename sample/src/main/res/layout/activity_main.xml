@@ -47,7 +47,8 @@
 
     <SurfaceView
         android:id="@+id/surfaceview"
-        android:visibility="gone"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:layout_marginBottom="100dp"
+        android:visibility="gone" />
 </FrameLayout>

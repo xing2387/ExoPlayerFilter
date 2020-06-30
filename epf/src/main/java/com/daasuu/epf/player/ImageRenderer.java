@@ -90,21 +90,10 @@ public class ImageRenderer extends BaseRenderer {
                 bitmap = BitmapFactory.decodeByteArray(inputBuffer.data.array(), 0, inputBuffer.data.array().length);
             }
             if (bitmap != null) {
-//                Canvas canvas = surface.lockHardwareCanvas();
-////                Rect sRect = new Rect(0, 0, 200, 200);
-////                Rect dRect = new Rect(0, 0, 200, 200);
-////                canvas.drawBitmap(bitmap, sRect, dRect, paint);
-////                canvas.drawBitmap(bitmap, matrix, paint);
-////                canvas.drawPicture();
-////                canvas.drawBitmap(bitmap, 0, 0, paint);
-////                canvas.drawText("sss", 100, 100, paint);
-////                canvas.drawColor(Color.BLUE);
-////                canvas.drawBitmapMesh();
-////                canvas.drawBitmapMesh(bitmap, WIDTH, HEIGHT, verts, 0, null, 0, null);
-//
-//
-//                surface.unlockCanvasAndPost(canvas);
-                drawBitmapTOSurface(surface, bitmap);
+                Canvas canvas = surface.lockCanvas(null);
+                canvas.drawBitmap(bitmap, 0, 0, paint);
+                surface.unlockCanvasAndPost(canvas);
+//                drawBitmapTOSurface(surface, bitmap);
             }
         }
 
