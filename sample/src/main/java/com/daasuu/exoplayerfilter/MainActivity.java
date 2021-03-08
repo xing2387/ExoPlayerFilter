@@ -1,13 +1,9 @@
 package com.daasuu.exoplayerfilter;
 
 import android.content.Intent;
-import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -31,6 +27,7 @@ import com.google.android.exoplayer2.LoadControl;
 import com.google.android.exoplayer2.Renderer;
 import com.google.android.exoplayer2.SeekParameters;
 import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.source.ConcatenatingMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.MergingMediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
@@ -43,6 +40,7 @@ import com.google.android.exoplayer2.util.Util;
 
 import java.util.List;
 
+import static android.content.Intent.EXTRA_ALLOW_MULTIPLE;
 import static com.google.android.exoplayer2.C.SELECTION_FLAG_FORCED;
 
 
@@ -177,7 +175,6 @@ public class MainActivity extends AppCompatActivity {
             case C.TRACK_TYPE_AUDIO:
                 return DefaultLoadControl.DEFAULT_AUDIO_BUFFER_SIZE;
             case C.TRACK_TYPE_VIDEO:
-            case ImageRenderer.TRACK_TYPE_CUSTOM_IMAGE:
                 return DefaultLoadControl.DEFAULT_VIDEO_BUFFER_SIZE;
             case C.TRACK_TYPE_TEXT:
                 return DefaultLoadControl.DEFAULT_TEXT_BUFFER_SIZE;
@@ -198,11 +195,14 @@ public class MainActivity extends AppCompatActivity {
         DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "yourApplicationName"));
 //        Constant.STREAM_URL_MP4_VOD_SHORT
         // This is the MediaSource representing the media to be played.
-        MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(Uri.parse("http://10.255.207.16/mv.mp4"));
+        MediaSource videoSource1 = new ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(Uri.parse("http://10.255.206.106:81/mv.mp4"));
         MediaSource videoSource2 = new ProgressiveMediaSource.Factory(dataSourceFactory)
-                .createMediaSource(Uri.parse(Constant.STREAM_URL_MP4_VOD_SHORT));
-        videoSource = new MergingMediaSource(videoSource2, videoSource);
+                .createMediaSource(Uri.parse("http://10.255.206.106:81/video/111.mp4"));
+
+//        MediaSource videoSource2 = new ProgressiveMediaSource.Factory(dataSourceFactory)
+//                .createMediaSource(Uri.parse(Constant.STREAM_URL_MP4_VOD_SHORT));
+        MediaSource videoSource = new ConcatenatingMediaSource(videoSource2, videoSource1);
         // SimpleExoPlayer
 //        player = ExoPlayerFactory.newSimpleInstance(this);
 
@@ -223,7 +223,7 @@ public class MainActivity extends AppCompatActivity {
 //        player.setVideoSurfaceView(surfaceView);
         player.setSeekParameters(new SeekParameters(0, 1000 * 1000));
         // Prepare the player with the source.
-        player.prepare(videoSource);
+        player.prepare(videoSource1);
         player.setPlayWhenReady(true);
 
     }
@@ -231,7 +231,8 @@ public class MainActivity extends AppCompatActivity {
     private void selectFile() {
         //调用系统文件管理器打开指定路径目录
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("image/*");
+        intent.setType("*/*");
+        intent.putExtra(EXTRA_ALLOW_MULTIPLE, true);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         startActivityForResult(intent, 1111);
     }
@@ -239,26 +240,48 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        Log.d(TAG, "onActivityResult: ");
         if (requestCode == 1111) {
-            Log.d(TAG, "onActivityResult: ");
+            // Produces DataSource instances through which media data is loaded.
+            DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "yourApplicationName"));
+            // This is the MediaSource representing the media to be played.
+            Format format = Format.createImageSampleFormat(
+                    null,
+                    "image/jpeg",
+                    null,
+                    Format.NO_VALUE,
+                    SELECTION_FLAG_FORCED,
+                    null,
+                    null, null);
+
             Uri fileUri = data == null ? null : data.getData();
             if (fileUri != null) {
-                // Produces DataSource instances through which media data is loaded.
-                DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "yourApplicationName"));
-                // This is the MediaSource representing the media to be played.
-//                MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory)
-//                        .createMediaSource(fileUri);
-                Format format = Format.createImageSampleFormat(
-                        null,
-                        "image/jpeg",
-                        null,
-                        Format.NO_VALUE,
-                        SELECTION_FLAG_FORCED,
-                        null,
-                        null, null);
-//                MediaSource videoSource = new SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(fileUri, format, 10_000);
-                MediaSource videoSource = new ImageMediaSource(dataSourceFactory, fileUri, 10_000);
-                player.prepare(videoSource);
+//                MediaSource imageSource = new ImageMediaSource(dataSourceFactory, fileUri, 2_000_000);
+//                MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse("http://10.255.207.16:81/mv.mp4"));
+//                ConcatenatingMediaSource source = new ConcatenatingMediaSource(true, imageSource, videoSource);
+                MediaSource source = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(fileUri);
+                player.prepare(source);
+                player.setPlayWhenReady(true);
+
+            } else if (data.getClipData() != null) {
+                MediaSource[] sources = new MediaSource[data.getClipData().getItemCount() + 1];
+                for (int i = 0; i < data.getClipData().getItemCount(); i++) {
+                    Uri uri = data.getClipData().getItemAt(i).getUri();
+//                    int j = i >= 2 ? i + 1 : i;
+                    int j = i >= 100 ? i + 1 : i;
+                    MediaSource imageSource = new ImageMediaSource(dataSourceFactory, uri, 2_000_000);
+//                MediaSource imageSource = new SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(uri, format, 2_000_000);
+                    sources[j] = imageSource;
+                }
+//            MediaSource imageSource = new SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(fileUri, format, 2_000_000);
+//            MediaSource imageSource1 = new SingleSampleMediaSource.Factory(dataSourceFactory).createMediaSource(image1, format, 2_000_000);
+//                MediaSource imageSource = new ImageMediaSource(dataSourceFactory, fileUri, 2_000_000);
+                MediaSource videoSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(Uri.parse("http://10.255.207.16:81/mv.mp4"));
+                sources[sources.length - 1] = videoSource;
+//                sources[2] = videoSource;
+//                ConcatenatingMediaSource source = new ConcatenatingMediaSource(true, videoSource, imageSource);
+                ConcatenatingMediaSource source = new ConcatenatingMediaSource(true, sources);
+                player.prepare(source);
                 player.setPlayWhenReady(true);
             }
         }

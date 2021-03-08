@@ -3,10 +3,11 @@ package com.daasuu.epf.player;
 import android.graphics.Bitmap;
 import android.opengl.EGL14;
 import android.opengl.GLES20;
+import android.opengl.GLException;
 import android.opengl.GLUtils;
+import android.opengl.Matrix;
+import android.util.Log;
 import android.view.Surface;
-
-import com.daasuu.epf.EglUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -19,12 +20,16 @@ import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.egl.EGLSurface;
 
 import static android.opengl.GLES20.GL_FRAGMENT_SHADER;
+import static android.opengl.GLES20.GL_LINK_STATUS;
+import static android.opengl.GLES20.GL_TRUE;
 import static android.opengl.GLES20.GL_VERTEX_SHADER;
+import static android.opengl.GLES20.glCreateProgram;
 
 /**
- * 创建opengl环境并渲染bitmap纹理
+ * 创建opengl环境 并渲染bitmap纹理
  */
-public class GLHelper {
+public class GLImageDrawerHelper {
+    private static final String TAG = "GLImageDrawerHelper";
 
     private String mVertex = "precision highp float;\n" +
             "precision highp int;\n" +
@@ -45,7 +50,7 @@ public class GLHelper {
             "varying vec2 vTextureCo;\n" +
             "uniform sampler2D uTexture;\n" +
             "void main() {\n" +
-            "    gl_FragColor = texture2D( uTexture, vTextureCo);\n" +
+            "    gl_FragColor = texture2D(uTexture, vTextureCo);\n" +
             "}";
 
     private int vertexShader;
@@ -73,10 +78,10 @@ public class GLHelper {
     protected FloatBuffer mTextureBuffer;
 
     public static float[] textureCo = new float[]{
-            0.0f, 1.0f,
             0.0f, 0.0f,
-            1.0f, 1.0f,
-            1.0f, 0.0f
+            1.0f, 0.0f,
+            0.0f, 1.0f,
+            1.0f, 1.0f
     };
 
     public static float[] vertexCo = new float[]{
@@ -105,6 +110,74 @@ public class GLHelper {
     }
 
 
+    public static int loadShader(final String strSource, final int iType) {
+        int[] compiled = new int[1];
+        int iShader = GLES20.glCreateShader(iType);
+        GLES20.glShaderSource(iShader, strSource);
+        GLES20.glCompileShader(iShader);
+        GLES20.glGetShaderiv(iShader, GLES20.GL_COMPILE_STATUS, compiled, 0);
+        if (compiled[0] == 0) {
+            Log.d("Load Shader Failed", "Compilation\n" + GLES20.glGetShaderInfoLog(iShader));
+            return 0;
+        }
+        return iShader;
+    }
+
+    public static int createProgram(final int vertexShader, final int pixelShader) throws GLException {
+        final int program = glCreateProgram();
+//        checkGlError("createProgram");
+        if (program == 0) {
+            throw new RuntimeException("Could not create program. GLES20 error: " + GLES20.glGetError());
+        }
+
+        GLES20.glAttachShader(program, vertexShader);
+        GLES20.glAttachShader(program, pixelShader);
+
+        GLES20.glLinkProgram(program);
+        final int[] linkStatus = new int[1];
+        GLES20.glGetProgramiv(program, GL_LINK_STATUS, linkStatus, 0);
+        if (linkStatus[0] != GL_TRUE) {
+            GLES20.glDeleteProgram(program);
+            throw new RuntimeException("Could not link program");
+        }
+        return program;
+    }
+
+    private float viewWidth;
+    private float viewHeight;
+
+    public void setViewSize(int w, int h) {
+        viewWidth = w;
+        viewHeight = h;
+    }
+
+    public void setBitmapSize(float bitmapW, float bitmapH) {
+        float viewPortW;
+        float viewPortH;
+        float startX;
+        float startY;
+        float scale;
+        if (bitmapW * viewHeight > viewWidth * bitmapH) {   //图片比view宽
+            viewPortW = viewWidth;
+            viewPortH = bitmapH * viewWidth / bitmapW;
+            startX = 0;
+            startY = (viewHeight - viewPortH) / 2;
+            scale = bitmapW / viewPortW;
+        } else {
+            viewPortW = bitmapW * viewHeight / bitmapH;
+            viewPortH = viewHeight;
+            startX = (viewWidth - viewPortW) / 2;
+            startY = 0;
+            scale = bitmapH / viewHeight;
+        }
+        Log.d(TAG, "setBitmapSize: glViewport x,y,w,h = " + startX + ", " + startY + ", " + viewPortW + ", "
+                + viewPortH + ", bitmap size " + bitmapW + " x " + bitmapH + ", view size " + viewWidth + ", " + viewHeight);
+//        GLES20.glViewport((int) startX, (int) startY, (int) (viewPortW), (int) viewPortH);
+        Matrix.setIdentityM(mTextureMatrix, 0);
+        Matrix.setIdentityM(mVertexMatrix, 0);
+//        Matrix.scaleM(mTextureMatrix, 0, scale, scale, 1);
+    }
+
     /**
      * 创建OpenGL环境 绘制bitmap纹理
      *
@@ -112,14 +185,19 @@ public class GLHelper {
      */
     public void drawToBitmap(Bitmap bitmap) {
         //清空屏幕
-        GLES20.glClearColor(1, 1, 1, 1);
+        GLES20.glClearColor(0, 0, 0, 1);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
+
+        if (bitmap == null || bitmap.isRecycled()) {
+            return;
+        }
+        setBitmapSize(bitmap.getWidth(), bitmap.getHeight());
 
         initBuffer();
 
-        vertexShader = EglUtil.loadShader(mVertex, GL_VERTEX_SHADER);
-        fragmentShader = EglUtil.loadShader(mFragment, GL_FRAGMENT_SHADER);
-        int mGLProgram = EglUtil.createProgram(vertexShader, fragmentShader);
+        vertexShader = loadShader(mVertex, GL_VERTEX_SHADER);
+        fragmentShader = loadShader(mFragment, GL_FRAGMENT_SHADER);
+        int mGLProgram = createProgram(vertexShader, fragmentShader);
         mGLVertexCo = GLES20.glGetAttribLocation(mGLProgram, "aVertexCo");
         mGLTextureCo = GLES20.glGetAttribLocation(mGLProgram, "aTextureCo");
         mGLVertexMatrix = GLES20.glGetUniformLocation(mGLProgram, "uVertexMatrix");
@@ -138,6 +216,7 @@ public class GLHelper {
         GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
         //设置环绕方向T，截取纹理坐标到[1/2n,1-1/2n]。将导致永远不会与border融合
         GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+
         GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
 
         GLES20.glUseProgram(mGLProgram);
@@ -157,58 +236,4 @@ public class GLHelper {
         GLES20.glDisableVertexAttribArray(mGLTextureCo);
     }
 
-
-    /**
-     * 向surfaceview中绘制bitmap
-     * <p>
-     * EGL是介于诸如OpenGL 或OpenVG的Khronos渲染API与底层本地平台窗口系统的接口。
-     * 它被用于处理图形管理、表面/缓冲捆绑、渲染同步及支援使用其他Khronos API进行的高效、加速、混合模式2D和3D渲染。
-     */
-    public static void drawBitmapTOSurface(Surface surface, Bitmap bitmap) {
-
-        //1. 取得EGL实例
-        EGL10 egl = (EGL10) EGLContext.getEGL();
-        //2. 选择Display
-        EGLDisplay display = egl.eglGetDisplay(EGL10.EGL_DEFAULT_DISPLAY);
-        egl.eglInitialize(display, null);
-
-        int[] attribList = {
-                EGL10.EGL_RED_SIZE, 8,
-                EGL10.EGL_GREEN_SIZE, 8,
-                EGL10.EGL_BLUE_SIZE, 8,
-                EGL10.EGL_ALPHA_SIZE, 8,
-                EGL10.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-                EGL10.EGL_NONE, 0,      // placeholder for recordable [@-3]
-                EGL10.EGL_NONE
-        };
-        //3. 选择Config
-        EGLConfig[] configs = new EGLConfig[1];
-        int[] numConfigs = new int[1];
-        egl.eglChooseConfig(display, attribList, configs, configs.length, numConfigs);
-        EGLConfig config = configs[0];
-
-        //4. 创建Surface
-        EGLSurface eglSurface = egl.eglCreateWindowSurface(display, config, surface,
-                new int[]{
-                        EGL14.EGL_NONE
-                });
-        //5. 创建Context
-        EGLContext context = egl.eglCreateContext(display, config, EGL10.EGL_NO_CONTEXT, new int[]{
-                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
-                EGL10.EGL_NONE
-        });
-        egl.eglMakeCurrent(display, eglSurface, eglSurface, context);
-
-        //创建OpenGL环境并绘制bitmap纹理
-        new GLHelper().drawToBitmap(bitmap);
-
-
-        //6. 指定当前的环境为绘制环境
-        egl.eglSwapBuffers(display, eglSurface);
-        egl.eglDestroySurface(display, eglSurface);
-        egl.eglMakeCurrent(display, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE,
-                EGL10.EGL_NO_CONTEXT);
-        egl.eglDestroyContext(display, context);
-        egl.eglTerminate(display);
-    }
 }

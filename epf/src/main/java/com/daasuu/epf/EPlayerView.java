@@ -68,25 +68,25 @@ public class EPlayerView extends GLSurfaceView implements VideoListener {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-
-        int measuredWidth = getMeasuredWidth();
-        int measuredHeight = getMeasuredHeight();
-
-        int viewWidth = measuredWidth;
-        int viewHeight = measuredHeight;
-
-        switch (playerScaleType) {
-            case RESIZE_FIT_WIDTH:
-                viewHeight = (int) (measuredWidth / videoAspect);
-                break;
-            case RESIZE_FIT_HEIGHT:
-                viewWidth = (int) (measuredHeight * videoAspect);
-                break;
-        }
-
-        // Log.d(TAG, "onMeasure viewWidth = " + viewWidth + " viewHeight = " + viewHeight);
-
-        setMeasuredDimension(viewWidth, viewHeight);
+//
+//        int measuredWidth = getMeasuredWidth();
+//        int measuredHeight = getMeasuredHeight();
+//
+//        int viewWidth = measuredWidth;
+//        int viewHeight = measuredHeight;
+//
+//        switch (playerScaleType) {
+//            case RESIZE_FIT_WIDTH:
+//                viewHeight = (int) (measuredWidth / videoAspect);
+//                break;
+//            case RESIZE_FIT_HEIGHT:
+//                viewWidth = (int) (measuredHeight * videoAspect);
+//                break;
+//        }
+//
+//        // Log.d(TAG, "onMeasure viewWidth = " + viewWidth + " viewHeight = " + viewHeight);
+//
+//        setMeasuredDimension(viewWidth, viewHeight);
 
     }
 
@@ -104,7 +104,7 @@ public class EPlayerView extends GLSurfaceView implements VideoListener {
         // Log.d(TAG, "width = " + width + " height = " + height + " unappliedRotationDegrees = " + unappliedRotationDegrees + " pixelWidthHeightRatio = " + pixelWidthHeightRatio);
         videoAspect = ((float) width / height) * pixelWidthHeightRatio;
         // Log.d(TAG, "videoAspect = " + videoAspect);
-        requestLayout();
+//        requestLayout();
     }
 
     @Override

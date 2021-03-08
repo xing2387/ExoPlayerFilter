@@ -1,7 +1,6 @@
 package com.daasuu.epf.player;
 
 
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.util.Log;
 
@@ -20,7 +19,7 @@ import java.io.IOException;
 public class ImageMediaSource extends BaseMediaSource {
     private static final String TAG = "ImageMediaSource";
 
-    private long mDuration;
+    private long mDurationUs;
     private Uri mUri;
     private final Timeline timeline;
     @Nullable
@@ -28,30 +27,25 @@ public class ImageMediaSource extends BaseMediaSource {
     private final DataSource.Factory dataSourceFactory;
 
 
-    public ImageMediaSource(DataSource.Factory dataSourceFactory, Uri uri, long duration) {
+    public ImageMediaSource(DataSource.Factory dataSourceFactory, Uri uri, long durationUs) {
         this.dataSourceFactory = dataSourceFactory;
         this.mUri = uri;
-        this.mDuration = duration;
-        timeline = new SinglePeriodTimeline(duration,
+        this.mDurationUs = durationUs;
+        timeline = new SinglePeriodTimeline(durationUs,
                 /* isSeekable= */ true, /* isDynamic= */ false, null);
-    }
-
-    @Override
-    protected void prepareSourceInternal(@Nullable TransferListener mediaTransferListener) {
-        transferListener = mediaTransferListener;
-        Log.d(TAG, "prepareSourceInternal: " + Thread.currentThread().getName());
-        refreshSourceInfo(timeline, /* manifest= */ null);
-    }
-
-    @Override
-    protected void releaseSourceInternal() {
-        Log.d(TAG, "releaseSourceInternal: " + Thread.currentThread().getName());
     }
 
     @Nullable
     @Override
     public Object getTag() {
         return super.getTag();
+    }
+
+    @Override
+    protected void prepareSourceInternal(@Nullable TransferListener mediaTransferListener) {
+        Log.d(TAG, "prepareSourceInternal: " + Thread.currentThread().getName());
+        transferListener = mediaTransferListener;
+        refreshSourceInfo(timeline, /* manifest= */ null);
     }
 
     @Override
@@ -62,12 +56,19 @@ public class ImageMediaSource extends BaseMediaSource {
     @Override
     public MediaPeriod createPeriod(MediaPeriodId id, Allocator allocator, long startPositionUs) {
         Log.d(TAG, "createPeriod: " + Thread.currentThread().getName());
-        return new PicMediaPeriod(createEventDispatcher(id), mUri, mDuration, dataSourceFactory, transferListener);
+        return new ImageMediaPeriod(createEventDispatcher(id), mUri, mDurationUs, startPositionUs, dataSourceFactory, transferListener);
     }
 
     @Override
     public void releasePeriod(MediaPeriod mediaPeriod) {
-        ((PicMediaPeriod) mediaPeriod).release();
+        ((ImageMediaPeriod) mediaPeriod).release();
         Log.d(TAG, "releasePeriod: " + Thread.currentThread().getName());
     }
+
+    @Override
+    protected void releaseSourceInternal() {
+        Log.d(TAG, "releaseSourceInternal: " + Thread.currentThread().getName());
+    }
+
+
 }

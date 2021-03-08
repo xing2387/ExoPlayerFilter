@@ -57,7 +57,7 @@ public class GlBoxBlurFilter extends GlFilter {
 
     private float texelWidthOffset = 0.003f;
     private float texelHeightOffset = 0.003f;
-    private float blurSize = 1.0f;
+    private float blurSize = 3.0f;
 
 
     public GlBoxBlurFilter() {

@@ -63,7 +63,7 @@ public class GlGaussianBlurFilter extends GlFilter {
 
     private float texelWidthOffset = 0.01f;
     private float texelHeightOffset = 0.01f;
-    private float blurSize = 0.2f;
+    private float blurSize = 0.8f;
 
     public GlGaussianBlurFilter() {
         super(VERTEX_SHADER, FRAGMENT_SHADER);

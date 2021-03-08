@@ -25,8 +25,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeriod.SourceLoadable> {
-    private static final String TAG = "PicMediaPeriod";
+public class ImageMediaPeriod implements MediaPeriod, Loader.Callback<ImageMediaPeriod.SourceLoadable> {
+
+    private static final String TAG = "ljx-PicMediaPeriod";
 
     private static final Format format = Format.createImageSampleFormat(
             null,
@@ -38,10 +39,11 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
             null, null);
 
 
-    private final ArrayList<SampleStreamImpl> sampleStreams;
+    private final ArrayList<ImageSampleStreamImpl> sampleStreams;
     private final TrackGroupArray tracks;
     private EventDispatcher eventDispatcher;
     private DataSource.Factory dataSourceFactory;
+    /* package */ boolean notifiedReadingStarted;
     /* package */ boolean loadingFinished;
     /* package */ boolean loadingSucceeded;
     /* package */ byte[] sampleData;
@@ -50,11 +52,12 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
     private final DataSpec dataSpec;
     private final TransferListener transferListener;
     private final long durationUs;
+    private long startPositionUs;
 
-    public PicMediaPeriod(EventDispatcher eventDispatcher,
-                          Uri uri, long durationUs,
-                          DataSource.Factory dataSourceFactory,
-                          TransferListener mediaTransferListener) {
+    public ImageMediaPeriod(EventDispatcher eventDispatcher,
+                            Uri uri, long durationUs, long startPositionUs,
+                            DataSource.Factory dataSourceFactory,
+                            TransferListener mediaTransferListener) {
         this.tracks = new TrackGroupArray(new TrackGroup(format));
         this.sampleStreams = new ArrayList<>();
         this.eventDispatcher = eventDispatcher;
@@ -63,18 +66,21 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
         this.loader = new Loader("Loader:PicMediaPeriod");
         this.transferListener = mediaTransferListener;
         this.durationUs = durationUs;
-    }
-
-    @Override
-    public void prepare(Callback callback, long positionUs) {
-        Log.d(TAG, "prepare: " + Thread.currentThread().getName());
-        callback.onPrepared(this);
+        this.startPositionUs = startPositionUs;
+        eventDispatcher.mediaPeriodCreated();
     }
 
     public void release() {
         loader.release();
         eventDispatcher.mediaPeriodReleased();
     }
+
+    @Override
+    public void prepare(Callback callback, long positionUs) {
+        //Log.d(TAG, "prepare: " + Thread.currentThread().getName());
+        callback.onPrepared(this);
+    }
+
 
     @Override
     public void maybeThrowPrepareError() throws IOException {
@@ -88,14 +94,15 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
 
     @Override
     public long selectTracks(TrackSelection[] selections, boolean[] mayRetainStreamFlags, SampleStream[] streams, boolean[] streamResetFlags, long positionUs) {
-        Log.d(TAG, "selectTracks: " + Thread.currentThread().getName());
+        String uri = dataSpec.uri.toString();
+        Log.d(TAG, "selectTracks: " + Thread.currentThread().getName() + ", positionUs " + positionUs + ", uri " + uri.substring(uri.length() - 10, uri.length() - 4));
         for (int i = 0; i < selections.length; i++) {
             if (streams[i] != null && (selections[i] == null || !mayRetainStreamFlags[i])) {
                 sampleStreams.remove(streams[i]);
                 streams[i] = null;
             }
             if (streams[i] == null && selections[i] != null) {
-                SampleStreamImpl stream = new SampleStreamImpl();
+                ImageSampleStreamImpl stream = new ImageSampleStreamImpl(dataSpec, durationUs);
                 sampleStreams.add(stream);
                 streams[i] = stream;
                 streamResetFlags[i] = true;
@@ -106,39 +113,17 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
 
     @Override
     public void discardBuffer(long positionUs, boolean toKeyframe) {
-        Log.d(TAG, "discardBuffer: " + Thread.currentThread().getName());
+        //Log.d(TAG, "discardBuffer: " + Thread.currentThread().getName());
     }
 
     @Override
-    public long readDiscontinuity() {
-        Log.d(TAG, "readDiscontinuity: " + Thread.currentThread().getName());
-        return C.TIME_UNSET;
-    }
-
-    @Override
-    public long seekToUs(long positionUs) {
-        Log.d(TAG, "seekToUs: " + Thread.currentThread().getName());
-        return positionUs;
-    }
-
-    @Override
-    public long getAdjustedSeekPositionUs(long positionUs, SeekParameters seekParameters) {
-        return positionUs;
-    }
-
-    @Override
-    public long getBufferedPositionUs() {
-        return 0;
-    }
-
-    @Override
-    public long getNextLoadPositionUs() {
-        return 0;
+    public void reevaluateBuffer(long positionUs) {
+        //Log.d(TAG, "reevaluateBuffer: " + Thread.currentThread().getName());
     }
 
     @Override
     public boolean continueLoading(long positionUs) {
-        Log.d(TAG, "continueLoading: " + Thread.currentThread().getName());
+        //Log.d(TAG, "continueLoading: " + Thread.currentThread().getName());
         if (loadingFinished || loader.isLoading() || loader.hasFatalError()) {
             return false;
         }
@@ -165,13 +150,45 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
     }
 
     @Override
-    public void reevaluateBuffer(long positionUs) {
-        Log.d(TAG, "reevaluateBuffer: " + Thread.currentThread().getName());
+    public long readDiscontinuity() {
+        //Log.d(TAG, "readDiscontinuity: " + Thread.currentThread().getName());
+        if (!notifiedReadingStarted) {
+            eventDispatcher.readingStarted();
+            notifiedReadingStarted = true;
+        }
+        return C.TIME_UNSET;
+    }
+
+    @Override
+    public long seekToUs(long positionUs) {
+        //Log.d(TAG, "seekToUs: " + Thread.currentThread().getName());
+        for (int i = 0; i < sampleStreams.size(); i++) {
+            sampleStreams.get(i).reset();
+        }
+        return positionUs;
+    }
+
+    @Override
+    public long getAdjustedSeekPositionUs(long positionUs, SeekParameters seekParameters) {
+        return positionUs;
+    }
+
+    /**
+     * exoplayer的updatePeriods()中用来判断这个Period是否loading完成
+     */
+    @Override
+    public long getBufferedPositionUs() {
+        return loadingFinished ? C.TIME_END_OF_SOURCE : 0;
+    }
+
+    @Override
+    public long getNextLoadPositionUs() {
+        return loadingFinished || loader.isLoading() ? C.TIME_END_OF_SOURCE : 0;
     }
 
     @Override
     public void onLoadCompleted(SourceLoadable loadable, long elapsedRealtimeMs, long loadDurationMs) {
-        Log.d(TAG, "onLoadCompleted: ");
+        //Log.d(TAG, "onLoadCompleted: ");
         sampleSize = (int) loadable.dataSource.getBytesRead();
         sampleData = loadable.sampleData;
         loadingFinished = true;
@@ -194,56 +211,76 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
 
     @Override
     public void onLoadCanceled(SourceLoadable loadable, long elapsedRealtimeMs, long loadDurationMs, boolean released) {
-        Log.d(TAG, "onLoadCanceled: ");
+        //Log.d(TAG, "onLoadCanceled: ");
+        eventDispatcher.loadCanceled(
+                loadable.dataSpec,
+                loadable.dataSource.getLastOpenedUri(),
+                loadable.dataSource.getLastResponseHeaders(),
+                C.DATA_TYPE_MEDIA,
+                C.TRACK_TYPE_UNKNOWN,
+                /* trackFormat= */ null,
+                C.SELECTION_REASON_UNKNOWN,
+                /* trackSelectionData= */ null,
+                /* mediaStartTimeUs= */ 0,
+                durationUs,
+                elapsedRealtimeMs,
+                loadDurationMs,
+                loadable.dataSource.getBytesRead());
     }
 
     @Override
     public Loader.LoadErrorAction onLoadError(SourceLoadable loadable, long elapsedRealtimeMs, long loadDurationMs, IOException error, int errorCount) {
         Log.e(TAG, "onLoadError: ", error);
-        return null;
+        loadingFinished = true;
+
+        eventDispatcher.loadError(
+                loadable.dataSpec,
+                loadable.dataSource.getLastOpenedUri(),
+                loadable.dataSource.getLastResponseHeaders(),
+                C.DATA_TYPE_MEDIA,
+                C.TRACK_TYPE_UNKNOWN,
+                format,
+                C.SELECTION_REASON_UNKNOWN,
+                /* trackSelectionData= */ null,
+                /* mediaStartTimeUs= */ 0,
+                durationUs,
+                elapsedRealtimeMs,
+                loadDurationMs,
+                loadable.dataSource.getBytesRead(),
+                error,
+                /* wasCanceled= */ true);
+        return Loader.DONT_RETRY_FATAL;
     }
 
-    private class SampleStreamImpl implements SampleStream {
 
+    public class ImageSampleStreamImpl implements SampleStream {
+        public DataSpec dataSpec;
+        public long durationUs;
+        public long startPositionUs;
 
-        private static final int STREAM_STATE_SEND_FORMAT = 0;
-        private static final int STREAM_STATE_SEND_SAMPLE = 1;
-        private static final int STREAM_STATE_END_OF_STREAM = 2;
-
-        private int streamState;
-        private boolean notifiedDownstreamFormat;
+        public ImageSampleStreamImpl(DataSpec dataSpec, long durationUs) {
+            this.dataSpec = dataSpec;
+            this.durationUs = durationUs;
+            Log.d(TAG, "ImageSampleStreamImpl: " + dataSpec.uri + ", " + durationUs + ", " + startPositionUs);
+        }
 
         public void reset() {
-            if (streamState == STREAM_STATE_END_OF_STREAM) {
-                streamState = STREAM_STATE_SEND_SAMPLE;
-            }
         }
 
         @Override
         public boolean isReady() {
-            Log.d(TAG, "isReady: " + Thread.currentThread().getName());
             return loadingFinished;
         }
 
         @Override
         public void maybeThrowError() throws IOException {
-//            if (!treatLoadErrorsAsEndOfStream) {
-//                loader.maybeThrowError();
-//            }
         }
 
         @Override
         public int readData(FormatHolder formatHolder, DecoderInputBuffer buffer,
                             boolean requireFormat) {
-            Log.d(TAG, "readData: " + Thread.currentThread().getName());
-            if (streamState == STREAM_STATE_END_OF_STREAM) {
-                buffer.addFlag(C.BUFFER_FLAG_END_OF_STREAM);
-                return C.RESULT_BUFFER_READ;
-            } else if (requireFormat || streamState == STREAM_STATE_SEND_FORMAT) {
-                formatHolder.format = format;
-                streamState = STREAM_STATE_SEND_SAMPLE;
-                return C.RESULT_FORMAT_READ;
-            } else if (loadingFinished) {
+            if (loadingFinished) {
+                buffer.clear();
                 if (loadingSucceeded) {
                     buffer.addFlag(C.BUFFER_FLAG_KEY_FRAME);
                     buffer.timeUs = 0;
@@ -252,10 +289,9 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
                     }
                     buffer.ensureSpaceForWrite(sampleSize);
                     buffer.data.put(sampleData, 0, sampleSize);
-                } else {
                     buffer.addFlag(C.BUFFER_FLAG_END_OF_STREAM);
                 }
-                streamState = STREAM_STATE_END_OF_STREAM;
+                formatHolder.format = format;
                 return C.RESULT_BUFFER_READ;
             }
             return C.RESULT_NOTHING_READ;
@@ -263,15 +299,11 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
 
         @Override
         public int skipData(long positionUs) {
-            Log.d(TAG, "skipData: " + Thread.currentThread().getName());
-            if (positionUs > 0 && streamState != STREAM_STATE_END_OF_STREAM) {
-                streamState = STREAM_STATE_END_OF_STREAM;
-                return 1;
-            }
             return 0;
         }
 
     }
+
 
     /* package */ static final class SourceLoadable implements Loader.Loadable {
 
@@ -293,13 +325,13 @@ public class PicMediaPeriod implements MediaPeriod, Loader.Callback<PicMediaPeri
 
         @Override
         public void cancelLoad() {
-            Log.d(TAG, "cancelLoad: " + Thread.currentThread().getName());
+            //Log.d(TAG, "cancelLoad: " + Thread.currentThread().getName());
             // Never happens.
         }
 
         @Override
         public void load() throws IOException, InterruptedException {
-            Log.d(TAG, "load: " + Thread.currentThread().getName());
+            //Log.d(TAG, "load: " + Thread.currentThread().getName());
             // We always load from the beginning, so reset bytesRead to 0.
             dataSource.resetBytesRead();
             try {
